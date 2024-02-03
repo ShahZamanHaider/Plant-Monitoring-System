@@ -13,8 +13,9 @@
 #include "camera_pins.h"
 
 
-const char* ssid = "**********";
-const char* password = "**********";
+const char* ssid = "REPLACE_WITH_YOUR_SSID";
+const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+
 
 void startCameraServer();
 void setupLedFlash(int pin);
@@ -118,11 +119,14 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
 
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ssid, password);
+
   startCameraServer();
 
-  Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
+  Serial.print("Camera Stream Ready! Go to: http://");
+  Serial.println(WiFi.softAPIP());
+  WiFi.setAutoReconnect(true);
 }
 
 void loop() {
