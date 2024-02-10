@@ -1,6 +1,16 @@
+#define BLYNK_PRINT Serial
 #include "esp_camera.h"
 #include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
 
+const int RGB =  12;
+const int IR_night = 13;
+const int UV = 15;
+const int LED_simple = 14;
+
+unsigned long photoInterval = 0;
+unsigned long lastPhotoTime = 0;
 
 //#define CAMERA_MODEL_WROVER_KIT // Has PSRAM
 //#define CAMERA_MODEL_ESP_EYE // Has PSRAM
@@ -13,17 +23,25 @@
 #include "camera_pins.h"
 
 
-const char* ssid = "REPLACE_WITH_YOUR_SSID";
-const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+char ssid[] = "REPLACE_WITH_YOUR_SSID";
+char password[] = "REPLACE_WITH_YOUR_PASSWORD";
+char token[] = "token_number_of_blink";
 
 
 void startCameraServer();
-void setupLedFlash(int pin);
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
+
+  pinMode(RGB, OUTPUT);
+  pinMode(IR_night, OUTPUT);
+  pinMode(UV, OUTPUT);
+  pinMode(LED_simple, OUTPUT);
+
+  Blynk.begin(token, ssid, password);
+
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -127,9 +145,207 @@ void setup() {
   Serial.print("Camera Stream Ready! Go to: http://");
   Serial.println(WiFi.softAPIP());
   WiFi.setAutoReconnect(true);
+
+  lastPhotoTime = millis(); //millis is used to current time
 }
 
 void loop() {
 
+  Blynk.run();   
   delay(10);
+  
+  unsigned long currentTime = millis();
+  if (photoInterval > 0 && currentTime - lastPhotoTime >= photoInterval) {  //logic for picture capturing
+    takePicture();
+    lastPhotoTime = currentTime;
+  }
+  delay(5);
+
+}
+
+BLYNK_WRITE(V0) { //for UV LIGHT
+  int uvValue = param.asInt();
+
+  switch(uvValue){
+  case 0:
+   digitalWrite(UV, LOW); 
+     break;
+  case 1:
+   digitalWrite(UV, HIGH); 
+     break;
+  default:
+   digitalWrite(UV, LOW); 
+  }
+  
+}
+
+BLYNK_WRITE(V1) { //for IR(N) LIGHT
+  int irValue = param.asInt();
+
+   switch(irValue){
+  case 0:
+   digitalWrite(IR_night, LOW); 
+     break;
+  case 1:
+   digitalWrite(IR_night, HIGH); 
+     break;
+  default:
+   digitalWrite(IR_night, LOW); 
+  }
+  
+}
+
+BLYNK_WRITE(V2) { //for LEDsimple
+  int led_simple_Value = param.asInt();
+
+   switch(led_simple_Value){
+  case 0:
+   digitalWrite(LED_simple, LOW); 
+     break;
+  case 1:
+   digitalWrite(LED_simple, HIGH); 
+     break;
+  default:
+   digitalWrite(LED_simple, LOW); 
+  }
+}
+
+BLYNK_WRITE(V3) { //for RGB LIGHT
+  int rgbValue = param.asInt();
+
+   switch(rgbValue){
+  case 0:
+   digitalWrite(RGB, LOW); 
+     break;
+  case 1:
+   digitalWrite(RGB, HIGH); 
+     break;
+  default:
+   digitalWrite(RGB, LOW); 
+  }
+}
+
+BLYNK_WRITE(V4) { //for frame size
+  sensor_t * s = esp_camera_sensor_get();
+  int resolutionValue = param.asInt();
+  switch (resolutionValue) {
+    case 0:
+      s->set_framesize(s, FRAMESIZE_UXGA);  // (1600 x 1200)
+      break;
+    case 1:
+      s->set_framesize(s, FRAMESIZE_QVGA); // (320 x 240)
+      break;
+    case 2:
+      s->set_framesize(s, FRAMESIZE_CIF); // (352 x 288)
+      break;
+    case 3:
+      s->set_framesize(s, FRAMESIZE_VGA); // (640 x 480)
+      break;
+    case 4:
+      s->set_framesize(s, FRAMESIZE_SVGA); // (800 x 600)
+      break;
+    case 5:
+      s->set_framesize(s, FRAMESIZE_XGA); // (1024 x 768)
+      break;
+    case 6:
+     s->set_framesize(s, FRAMESIZE_SXGA); // (1280 x 1024)
+      break;
+    default:
+     s->set_framesize(s, FRAMESIZE_QVGA); // (320 x 240)
+      
+  }
+  
+}
+
+BLYNK_WRITE(V5) { //for brightness
+  sensor_t * s = esp_camera_sensor_get();
+  int brightness_value = param.asInt();
+
+  switch(brightness_value){
+  case -2:
+   s->set_brightness(s, -2);
+     break;
+  case -1:
+   s->set_brightness(s, -1);
+     break;
+  case 0:
+   s->set_brightness(s, 0);
+     break;
+  case 1:
+   s->set_brightness(s, 1);
+     break;
+  case 2:
+   s->set_brightness(s, 2);
+     break;
+  default:
+    s->set_brightness(s, 0);
+  }
+
+}
+
+BLYNK_WRITE(V6) { //for contrast
+  sensor_t * s = esp_camera_sensor_get();
+  int contrast_value = param.asInt();
+
+  switch(contrast_value){
+  case -2:
+   s->set_contrast(s, -2);
+     break;
+  case -1:
+   s->set_contrast(s, -1);
+     break;
+  case 0:
+   s->set_contrast(s, 0);
+     break;
+  case 1:
+   s->set_contrast(s, 1);
+     break;
+  case 2:
+   s->set_contrast(s, 2);
+     break;
+  default:
+    s->set_contrast(s, 0);
+  }
+
+}
+
+BLYNK_WRITE(V7) { //for saturation
+  sensor_t * s = esp_camera_sensor_get();
+  int saturation_value = param.asInt();
+
+  switch(saturation_value){
+  case -2:
+   s->set_saturation(s, -2);
+     break;
+  case -1:
+   s->set_saturation(s, -1);
+     break;
+  case 0:
+   s->set_saturation(s, 0);
+     break;
+  case 1:
+   s->set_saturation(s, 1);
+     break;
+  case 2:
+   s->set_saturation(s, 2);
+     break;
+  default:
+    s->set_saturation(s, 0);
+  }
+
+}
+
+BLYNK_WRITE(V8) {
+  photoInterval = param.asInt() * 1000 * 60;
+}
+
+void takePicture() {
+  camera_fb_t *fb = NULL;
+  // Take a picture
+  fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("Camera capture failed");
+    return;
+  }
+  esp_camera_fb_return(fb); //reset the video stream
 }
